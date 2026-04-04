@@ -6,6 +6,7 @@
 
 @theme inline {
     --font-heading: var(--font-mono);
+    --font-sans: var(--font-sans);
     --font-mono: var(--font-mono);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
@@ -124,6 +125,6 @@
     @apply bg-background text-foreground;
     }
   html {
-    @apply font-mono;
+    @apply font-sans;
     }
 }
