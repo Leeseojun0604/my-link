@@ -4,8 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function Page() {
   const profile = {
-    displayName: "Alex Dev",
-    username: "@alex.dev",
+    displayName: "Seojun Lee",
+    username: "@seojun.lee",
     bio: "Frontend Engineer & UI/UX Enthusiast. \nBuilding modern web experiences. 🚀",
   }
 
