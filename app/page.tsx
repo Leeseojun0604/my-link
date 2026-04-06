@@ -1,6 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+
 import { dummyLinks, type LinkItem } from "@/data/links"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -16,27 +20,58 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+
+const formSchema = z.object({
+  title: z
+    .string()
+    .min(1, { message: "제목을 입력해주세요." })
+    .max(50, { message: "제목은 50자 이내로 입력해주세요." }),
+  url: z
+    .string()
+    .min(1, { message: "URL을 입력해주세요." })
+    .regex(/^(https?:\/\/)?([\w\d-]+\.)+[\w\d]{2,}(\/.*)?$/i, {
+      message: "올바른 URL 형식이 아닙니다.",
+    }),
+})
 
 export default function Page() {
   const [links, setLinks] = useState<LinkItem[]>(dummyLinks)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [newLinkTitle, setNewLinkTitle] = useState("")
-  const [newLinkUrl, setNewLinkUrl] = useState("")
 
-  const handleAddLink = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newLinkTitle.trim() || !newLinkUrl.trim()) return
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: "",
+      url: "",
+    },
+  })
+
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open)
+    if (!open) {
+      form.reset()
+    }
+  }
+
+  const onSubmit = (values: z.infer<typeof formSchema>) => {
+    const finalUrl = values.url.startsWith("http") ? values.url : `https://${values.url}`
 
     const newLink: LinkItem = {
       id: `link-${Date.now()}`,
-      title: newLinkTitle,
-      url: newLinkUrl,
+      title: values.title.trim(),
+      url: finalUrl,
     }
 
     setLinks([newLink, ...links])
-    setNewLinkTitle("")
-    setNewLinkUrl("")
-    setIsDialogOpen(false)
+    handleOpenChange(false)
   }
 
   const profile = {
@@ -90,50 +125,60 @@ export default function Page() {
         <div className="w-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150 fill-mode-both">
           
           {/* 링크 추가 버튼 및 다이얼로그 */}
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger render={<Button className="w-full rounded-2xl h-14 text-base font-semibold shadow-md transition-transform hover:-translate-y-0.5" />}>
               + 링크 추가
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
-              <form onSubmit={handleAddLink}>
-                <DialogHeader>
-                  <DialogTitle>새로운 링크 추가</DialogTitle>
-                  <DialogDescription>
-                    추가할 링크의 제목과 URL을 입력해주세요.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex flex-col gap-4 py-4">
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="title">제목</Label>
-                    <Input
-                      id="title"
-                      placeholder="예: 내 포트폴리오"
-                      value={newLinkTitle}
-                      onChange={(e) => setNewLinkTitle(e.target.value)}
-                      required
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+                  <DialogHeader>
+                    <DialogTitle>새로운 링크 추가</DialogTitle>
+                    <DialogDescription>
+                      추가할 링크의 제목과 URL을 입력해주세요.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="py-2 flex flex-col gap-4">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>제목</FormLabel>
+                          <FormControl>
+                            <Input placeholder="예: 내 포트폴리오" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="url"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL</FormLabel>
+                          <FormControl>
+                            <Input type="text" inputMode="url" placeholder="https://example.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="url">URL</Label>
-                    <Input
-                      id="url"
-                      type="url"
-                      placeholder="https://..."
-                      value={newLinkUrl}
-                      onChange={(e) => setNewLinkUrl(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                <DialogFooter className="flex-col sm:flex-row gap-2">
-                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsDialogOpen(false)}>
-                    취소
-                  </Button>
-                  <Button type="submit" className="w-full sm:w-auto">
-                    추가하기
-                  </Button>
-                </DialogFooter>
-              </form>
+
+                  <DialogFooter className="flex-col sm:flex-row gap-2">
+                    <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => handleOpenChange(false)}>
+                      취소
+                    </Button>
+                    <Button type="submit" className="w-full sm:w-auto">
+                      추가하기
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
             </DialogContent>
           </Dialog>
 
