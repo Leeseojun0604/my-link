@@ -1,8 +1,44 @@
-import { dummyLinks } from "@/data/links"
+"use client"
+
+import { useState } from "react"
+import { dummyLinks, type LinkItem } from "@/data/links"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 export default function Page() {
+  const [links, setLinks] = useState<LinkItem[]>(dummyLinks)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [newLinkTitle, setNewLinkTitle] = useState("")
+  const [newLinkUrl, setNewLinkUrl] = useState("")
+
+  const handleAddLink = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newLinkTitle.trim() || !newLinkUrl.trim()) return
+
+    const newLink: LinkItem = {
+      id: `link-${Date.now()}`,
+      title: newLinkTitle,
+      url: newLinkUrl,
+    }
+
+    setLinks([newLink, ...links])
+    setNewLinkTitle("")
+    setNewLinkUrl("")
+    setIsDialogOpen(false)
+  }
+
   const profile = {
     displayName: "Seojun Lee",
     username: "@seojun.lee",
@@ -52,7 +88,56 @@ export default function Page() {
 
         {/* Links Section */}
         <div className="w-full flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150 fill-mode-both">
-          {dummyLinks.map((link) => {
+          
+          {/* 링크 추가 버튼 및 다이얼로그 */}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger render={<Button className="w-full rounded-2xl h-14 text-base font-semibold shadow-md transition-transform hover:-translate-y-0.5" />}>
+              + 링크 추가
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <form onSubmit={handleAddLink}>
+                <DialogHeader>
+                  <DialogTitle>새로운 링크 추가</DialogTitle>
+                  <DialogDescription>
+                    추가할 링크의 제목과 URL을 입력해주세요.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-4 py-4">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="title">제목</Label>
+                    <Input
+                      id="title"
+                      placeholder="예: 내 포트폴리오"
+                      value={newLinkTitle}
+                      onChange={(e) => setNewLinkTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="url">URL</Label>
+                    <Input
+                      id="url"
+                      type="url"
+                      placeholder="https://..."
+                      value={newLinkUrl}
+                      onChange={(e) => setNewLinkUrl(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <DialogFooter className="flex-col sm:flex-row gap-2">
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsDialogOpen(false)}>
+                    취소
+                  </Button>
+                  <Button type="submit" className="w-full sm:w-auto">
+                    추가하기
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {links.map((link) => {
             // Google Favicon URL 생성 (128px 고해상도 요청)
             const iconUrl = `https://www.google.com/s2/favicons?domain=${link.url}&sz=128`
 
