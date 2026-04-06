@@ -16,7 +16,7 @@ export default function Page() {
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center px-6 py-16 sm:py-24 overflow-hidden selection:bg-primary/30">
-      
+
       {/* Ambient Animated Background (Glassmorphism + Glow) */}
       <div className="pointer-events-none fixed inset-0 -z-10 flex justify-center">
         {/* 중앙 상단을 밝히는 거대한 원뿔/타원형 빛 */}
@@ -26,7 +26,7 @@ export default function Page() {
       </div>
 
       <div className="w-full max-w-xl flex flex-col items-center gap-10 z-10">
-        
+
         {/* Profile Section */}
         <div className="flex flex-col items-center text-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
           <Avatar className="w-24 h-24 ring-2 ring-primary/20 ring-offset-2 ring-offset-background shadow-xl">
@@ -67,19 +67,19 @@ export default function Page() {
                 <Card className="relative overflow-hidden border border-white/5 bg-card/30 backdrop-blur-md shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-white/[0.04] dark:hover:bg-white/[0.04]">
                   {/* Subtle hover gradient inside card */}
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-r from-primary/5 via-transparent to-transparent transition-opacity duration-300" />
-                  
+
                   <CardContent className="p-4 sm:p-5 flex items-center gap-4">
                     {/* Favicon Container */}
                     <div className="relative shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-background/50 border border-border/50 shadow-inner overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
-                        src={iconUrl} 
-                        alt={`${link.title} icon`} 
+                      <img
+                        src={iconUrl}
+                        alt={`${link.title} icon`}
                         className="w-6 h-6 object-contain transition-transform duration-300 group-hover:scale-110"
                         loading="lazy"
                       />
                     </div>
-                    
+
                     {/* Link Text */}
                     <div className="flex-1 min-w-0">
                       <p className="text-base sm:text-lg font-semibold text-foreground/90 truncate transition-colors duration-300 group-hover:text-primary">
