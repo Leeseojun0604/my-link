@@ -2,6 +2,7 @@ export interface LinkItem {
   id: string;
   title: string;
   url: string;
+  createdAt?: any;
 }
 
 export const dummyLinks: LinkItem[] = [

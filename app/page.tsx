@@ -1,11 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 
-import { dummyLinks, type LinkItem } from "@/data/links"
+import { type LinkItem } from "@/data/links"
+import { Loader2 } from "lucide-react"
+
+import { db } from "@/lib/firebase"
+import { collection, addDoc, serverTimestamp, getDocs, query, orderBy } from "firebase/firestore"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -43,8 +47,34 @@ const formSchema = z.object({
 })
 
 export default function Page() {
-  const [links, setLinks] = useState<LinkItem[]>(dummyLinks)
+  const [links, setLinks] = useState<LinkItem[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const fetchLinks = async () => {
+    setIsLoading(true)
+    try {
+      const q = query(
+        collection(db, "users/anonymous/links"),
+        orderBy("createdAt", "desc")
+      )
+      const snapshot = await getDocs(q)
+      const fetchedLinks = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as LinkItem[]
+      setLinks(fetchedLinks)
+    } catch (error) {
+      console.error("Error fetching links: ", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchLinks()
+  }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -61,17 +91,24 @@ export default function Page() {
     }
   }
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     const finalUrl = values.url.startsWith("http") ? values.url : `https://${values.url}`
-
-    const newLink: LinkItem = {
-      id: `link-${Date.now()}`,
-      title: values.title.trim(),
-      url: finalUrl,
+    setIsSubmitting(true)
+    
+    try {
+      await addDoc(collection(db, "users/anonymous/links"), {
+        title: values.title.trim(),
+        url: finalUrl,
+        createdAt: serverTimestamp(),
+      })
+      await fetchLinks() // 갱신을 위해 데이터 재호출
+      handleOpenChange(false)
+    } catch (error) {
+      console.error("Error adding document: ", error)
+      alert("링크 추가 중 오류가 발생했습니다.")
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setLinks([newLink, ...links])
-    handleOpenChange(false)
   }
 
   const profile = {
@@ -170,11 +207,18 @@ export default function Page() {
                   </div>
 
                   <DialogFooter className="flex-col sm:flex-row gap-2">
-                    <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => handleOpenChange(false)}>
+                    <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
                       취소
                     </Button>
-                    <Button type="submit" className="w-full sm:w-auto">
-                      추가하기
+                    <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          추가 중...
+                        </>
+                      ) : (
+                        "추가하기"
+                      )}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -182,7 +226,16 @@ export default function Page() {
             </DialogContent>
           </Dialog>
 
-          {links.map((link) => {
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-10 opacity-70">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="mt-4 text-sm font-medium text-muted-foreground">링크를 불러오는 중입니다...</p>
+            </div>
+          ) : links.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center opacity-70">
+              <p className="text-sm font-medium text-muted-foreground">아직 추가된 링크가 없습니다.</p>
+            </div>
+          ) : links.map((link) => {
             // Google Favicon URL 생성 (128px 고해상도 요청)
             const iconUrl = `https://www.google.com/s2/favicons?domain=${link.url}&sz=128`
 
