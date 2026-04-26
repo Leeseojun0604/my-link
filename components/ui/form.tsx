@@ -12,16 +12,8 @@ import {
 
 import { cn } from "@/lib/utils"
 
-type FormProps<TFieldValues extends FieldValues> = {
-  children: React.ReactNode
-} & React.ComponentProps<typeof FormProvider>
-
-export function Form<TFieldValues extends FieldValues>({
-  children,
-  ...props
-}: FormProps<TFieldValues>) {
-  return <FormProvider {...props}>{children}</FormProvider>
-}
+const Form = FormProvider
+export { Form }
 
 // ---------------- FormField ----------------
 
