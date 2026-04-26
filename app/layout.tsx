@@ -15,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="ko"
       suppressHydrationWarning
       className={cn("antialiased", inter.variable, "font-sans", jetbrainsMono.variable)}
     >
