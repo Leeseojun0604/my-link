@@ -6,10 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 
 import { type LinkItem } from "@/data/links"
-import { Loader2 } from "lucide-react"
+import { Loader2, Pencil, Trash2, X, Check } from "lucide-react"
 
 import { db } from "@/lib/firebase"
-import { collection, addDoc, serverTimestamp, getDocs, query, orderBy } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -36,10 +36,12 @@ import {
 const formSchema = z.object({
   title: z
     .string()
+    .trim()
     .min(1, { message: "제목을 입력해주세요." })
     .max(50, { message: "제목은 50자 이내로 입력해주세요." }),
   url: z
     .string()
+    .trim()
     .min(1, { message: "URL을 입력해주세요." })
     .regex(/^(https?:\/\/)?([\w\d-]+\.)+[\w\d]{2,}(\/.*)?$/i, {
       message: "올바른 URL 형식이 아닙니다.",
@@ -51,6 +53,23 @@ export default function Page() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const [editingLink, setEditingLink] = useState<LinkItem | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false)
+
+  const [deletingLink, setDeletingLink] = useState<LinkItem | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false)
+
+  const editForm = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    mode: "onChange",
+    defaultValues: {
+      title: "",
+      url: "",
+    },
+  })
 
   const fetchLinks = async () => {
     setIsLoading(true)
@@ -78,6 +97,7 @@ export default function Page() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
     defaultValues: {
       title: "",
       url: "",
@@ -108,6 +128,65 @@ export default function Page() {
       alert("링크 추가 중 오류가 발생했습니다.")
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleEditStart = (e: React.MouseEvent, link: LinkItem) => {
+    e.preventDefault()
+    setEditingLink(link)
+    setIsEditDialogOpen(true)
+    editForm.reset({
+      title: link.title,
+      url: link.url,
+    })
+  }
+
+  const handleEditCancel = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault()
+    setIsEditDialogOpen(false)
+    setEditingLink(null)
+    editForm.reset()
+  }
+
+  const onSubmitEdit = async (values: z.infer<typeof formSchema>) => {
+    if (!editingLink) return
+    const finalUrl = values.url.startsWith("http") ? values.url : `https://${values.url}`
+    setIsEditSubmitting(true)
+    try {
+      await updateDoc(doc(db, "users/anonymous/links", editingLink.id), {
+        title: values.title.trim(),
+        url: finalUrl,
+      })
+      await fetchLinks()
+      setIsEditDialogOpen(false)
+      setEditingLink(null)
+    } catch (error) {
+      console.error("Error updating document: ", error)
+      alert("링크 수정 중 오류가 발생했습니다.")
+    } finally {
+      setIsEditSubmitting(false)
+    }
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent, link: LinkItem) => {
+    e.preventDefault()
+    setDeletingLink(link)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingLink) return
+    setIsDeleteSubmitting(true)
+    try {
+      await deleteDoc(doc(db, "users/anonymous/links", deletingLink.id))
+      await fetchLinks()
+      setIsDeleteDialogOpen(false)
+      setDeletingLink(null)
+    } catch (error) {
+      console.error("Error deleting document: ", error)
+      alert("링크 삭제 중 오류가 발생했습니다.")
+    } finally {
+      setIsDeleteSubmitting(false)
     }
   }
 
@@ -210,7 +289,7 @@ export default function Page() {
                     <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
                       취소
                     </Button>
-                    <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+                    <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting || !form.formState.isValid}>
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -223,6 +302,122 @@ export default function Page() {
                   </DialogFooter>
                 </form>
               </Form>
+            </DialogContent>
+          </Dialog>
+
+          {/* 링크 수정 다이얼로그 */}
+          <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+            setIsEditDialogOpen(open)
+            if (!open) {
+              setEditingLink(null)
+              editForm.reset()
+            }
+          }}>
+            <DialogContent className="sm:max-w-md">
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="flex flex-col gap-4" noValidate>
+                  <DialogHeader>
+                    <DialogTitle>링크 수정</DialogTitle>
+                    <DialogDescription>
+                      링크의 제목과 URL을 수정해주세요.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="py-2 flex flex-col gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>제목</FormLabel>
+                          <FormControl>
+                            <Input placeholder="예: 내 포트폴리오" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={editForm.control}
+                      name="url"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL</FormLabel>
+                          <FormControl>
+                            <Input type="text" inputMode="url" placeholder="https://example.com" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <DialogFooter className="flex-col sm:flex-row gap-2">
+                    <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setIsEditDialogOpen(false)} disabled={isEditSubmitting}>
+                      취소
+                    </Button>
+                    <Button type="submit" className="w-full sm:w-auto" disabled={isEditSubmitting || !editForm.formState.isValid}>
+                      {isEditSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          저장 중...
+                        </>
+                      ) : (
+                        "저장하기"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+
+          {/* 삭제 확인 다이얼로그 */}
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>정말 삭제하시겠습니까?</DialogTitle>
+                <DialogDescription>
+                  선택하신 링크가 영구적으로 삭제됩니다.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <p className="text-base text-foreground font-medium p-3 bg-secondary/20 rounded-lg border border-border/50">
+                  {deletingLink?.title}
+                </p>
+                <p className="text-sm text-destructive font-semibold flex items-center gap-1.5">
+                  <Trash2 className="w-4 h-4" />
+                  이 작업은 되돌릴 수 없습니다.
+                </p>
+              </div>
+              <DialogFooter className="flex-col sm:flex-row gap-2 mt-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full sm:w-auto" 
+                  onClick={() => setIsDeleteDialogOpen(false)} 
+                  disabled={isDeleteSubmitting}
+                >
+                  취소
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="destructive" 
+                  className="w-full sm:w-auto" 
+                  onClick={confirmDelete} 
+                  disabled={isDeleteSubmitting}
+                >
+                  {isDeleteSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      삭제 중...
+                    </>
+                  ) : (
+                    "삭제하기"
+                  )}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
 
@@ -245,7 +440,7 @@ export default function Page() {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-2xl"
+                className="group block w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-2xl animate-in fade-in zoom-in-95 duration-200"
               >
                 <Card className="relative overflow-hidden border border-white/5 bg-card/30 backdrop-blur-md shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-white/[0.04] dark:hover:bg-white/[0.04]">
                   {/* Subtle hover gradient inside card */}
@@ -264,15 +459,35 @@ export default function Page() {
                     </div>
 
                     {/* Link Text */}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 pr-2">
                       <p className="text-base sm:text-lg font-semibold text-foreground/90 truncate transition-colors duration-300 group-hover:text-primary">
                         {link.title}
                       </p>
                     </div>
 
-                    {/* Placeholder for External Link Arrow (User requested not to install Hugeicons yet, so using simple text/symbol or empty space) */}
-                    <div className="shrink-0 pl-2 opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0">
-                      <span className="text-primary/60 text-lg">↗</span>
+                    {/* Action Buttons */}
+                    <div 
+                      className="shrink-0 flex items-center gap-1 z-10"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-full bg-background/30 hover:bg-primary/20 hover:text-primary transition-colors"
+                        onClick={(e) => handleEditStart(e, link)}
+                        title="수정"
+                      >
+                        <Pencil className="w-4 h-4 opacity-80" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-full bg-background/30 hover:bg-destructive/20 hover:text-destructive transition-colors"
+                        onClick={(e) => handleDeleteClick(e, link)}
+                        title="삭제"
+                      >
+                        <Trash2 className="w-4 h-4 opacity-80" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
