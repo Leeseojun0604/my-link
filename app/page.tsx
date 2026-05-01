@@ -120,6 +120,7 @@ export default function Page() {
         title: values.title.trim(),
         url: finalUrl,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       })
       await fetchLinks() // 갱신을 위해 데이터 재호출
       handleOpenChange(false)
@@ -156,6 +157,7 @@ export default function Page() {
       await updateDoc(doc(db, "users/anonymous/links", editingLink.id), {
         title: values.title.trim(),
         url: finalUrl,
+        updatedAt: serverTimestamp(),
       })
       await fetchLinks()
       setIsEditDialogOpen(false)
