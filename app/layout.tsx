@@ -8,6 +8,9 @@ const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
 const jetbrainsMono = JetBrains_Mono({subsets:['latin'],variable:'--font-mono'})
 
+import { AuthProvider } from "@/hooks/useAuth";
+import Header from "@/components/Header";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -20,7 +23,12 @@ export default function RootLayout({
       className={cn("antialiased", inter.variable, "font-sans", jetbrainsMono.variable)}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <Header />
+            <main className="flex-1">{children}</main>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
